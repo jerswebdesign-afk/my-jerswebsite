@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App.jsx'
 import Legal from './Legal.jsx'
-import Access from './Access.jsx'
+import Access from './components/Access.jsx';
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
