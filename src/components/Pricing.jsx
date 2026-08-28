@@ -32,7 +32,7 @@ export default function Pricing() {
               ))}
             </div>
             {/* Replace with your Stripe payment link */}
-            <a href="#" className="w-full py-4 border border-white/20 bg-white/5 text-white font-headline font-bold uppercase text-[11px] tracking-[0.3em] hover:bg-white/10 hover:border-white/40 transition-all active:scale-95 text-center block">
+            <a href="https://buy.stripe.com/cNi00ifzLb9b8lzeysew800" className="w-full py-4 border border-white/20 bg-white/5 text-white font-headline font-bold uppercase text-[11px] tracking-[0.3em] hover:bg-white/10 hover:border-white/40 transition-all active:scale-95 text-center block">
               Get Story one
             </a>
           </div>
@@ -66,7 +66,7 @@ export default function Pricing() {
               ))}
             </div>
             {/* Replace with your Stripe payment link */}
-            <a href="#" className="w-full py-4 bg-white text-on-primary font-headline font-bold uppercase text-[11px] tracking-[0.3em] shadow-[0_0_40px_rgba(255,30,30,0.35)] hover:shadow-[0_0_50px_rgba(255,30,30,0.5)] transition-all active:scale-95 text-center block">
+            <a href="https://buy.stripe.com/7sYbJ05Zb1yB6dr4XSew801" className="w-full py-4 bg-white text-on-primary font-headline font-bold uppercase text-[11px] tracking-[0.3em] shadow-[0_0_40px_rgba(255,30,30,0.35)] hover:shadow-[0_0_50px_rgba(255,30,30,0.5)] transition-all active:scale-95 text-center block">
               Get tier two
             </a>
             <div className="p-4 bg-surface-container-high border border-white/20 mt-6 flex items-start gap-4">
