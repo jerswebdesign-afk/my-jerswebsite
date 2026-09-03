@@ -1,8 +1,8 @@
 {
     "rewrites": [
-        {
-            "source":"/(.*)",
-            "destination": "/index.html"
-        }
+        { "source": "/legal", "destination": "/index.html" },
+        { "source": "/access", "destination": "/index.html" },
+        { "source": "/ResellingEngine", "destination": "/index.html" },
+        { "source": "/owner-login", "destination": "/index.html" }
     ]
 }

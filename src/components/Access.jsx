@@ -1,12 +1,57 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { supabase } from '../supabaseClient.js'
+import { useOwnerAccess } from '../useOwnerAccess.js'
+
+function groupFilesByFolder(files) {
+  return files.reduce((acc, file) => {
+    const parts = file.path.split('/')
+    const folder = parts.length > 1 ? parts.slice(0, -1).join('/') : ''
+    if (!acc[folder]) acc[folder] = []
+    acc[folder].push(file)
+    return acc
+  }, {})
+}
 
 export default function Access() {
+  const { isOwner, email: ownerEmail } = useOwnerAccess()
+  const [ownerTier, setOwnerTier] = useState(null) // 'lower' | 'higher' | null
+  const [ownerStatus, setOwnerStatus] = useState('idle') // idle | loading | error | success
+  const [ownerFiles, setOwnerFiles] = useState([])
+  const [ownerTierLabel, setOwnerTierLabel] = useState('')
+  const [ownerError, setOwnerError] = useState('')
+
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState('idle') // idle | loading | error | not-found | success
   const [errorMessage, setErrorMessage] = useState('')
   const [tier, setTier] = useState(null)
   const [files, setFiles] = useState([])
+
+  async function loadOwnerPreview(tierKey) {
+    setOwnerTier(tierKey)
+    setOwnerStatus('loading')
+    setOwnerError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/owner-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ tier: tierKey }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setOwnerError(data.error || 'Something went wrong. Try again shortly.')
+        setOwnerStatus('error')
+        return
+      }
+      setOwnerTierLabel(data.tier)
+      setOwnerFiles(data.files || [])
+      setOwnerStatus('success')
+    } catch (err) {
+      setOwnerError('Network error reaching /api/owner-preview.')
+      setOwnerStatus('error')
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -41,13 +86,8 @@ export default function Access() {
     }
   }
 
-  const groups = files.reduce((acc, file) => {
-    const parts = file.path.split('/')
-    const folder = parts.length > 1 ? parts.slice(0, -1).join('/') : ''
-    if (!acc[folder]) acc[folder] = []
-    acc[folder].push(file)
-    return acc
-  }, {})
+  const groups = groupFilesByFolder(files)
+  const ownerGroups = groupFilesByFolder(ownerFiles)
 
   return (
     <div className="bg-surface-container-lowest text-on-surface font-['Manrope'] min-h-screen px-6 md:px-24 py-16 md:py-24">
@@ -62,6 +102,69 @@ export default function Access() {
         <p className="text-on-surface-variant font-light text-sm md:text-base mb-10">
           Enter the email you used at checkout and we'll pull up your files.
         </p>
+
+        {isOwner && (
+          <div className="border border-outline-variant/30 bg-surface-container text-sm p-4 mb-8">
+            <div className="text-white font-bold uppercase tracking-widest text-xs mb-2">Owner / Dev preview</div>
+            <p className="text-on-surface-variant mb-4">
+              Signed in as {ownerEmail}. Preview either vault directly, without needing a purchase.
+            </p>
+            <div className="flex gap-3 flex-wrap mb-4">
+              <button
+                onClick={() => loadOwnerPreview('lower')}
+                disabled={ownerStatus === 'loading'}
+                className="py-3 px-6 border border-outline-variant/30 bg-surface-container-high text-white font-headline font-bold uppercase text-[11px] tracking-[0.2em] hover:border-white/40 transition-all disabled:opacity-50"
+              >
+                Preview The JER Method
+              </button>
+              <button
+                onClick={() => loadOwnerPreview('higher')}
+                disabled={ownerStatus === 'loading'}
+                className="py-3 px-6 border border-outline-variant/30 bg-surface-container-high text-white font-headline font-bold uppercase text-[11px] tracking-[0.2em] hover:border-white/40 transition-all disabled:opacity-50"
+              >
+                Preview The Reselling Engine
+              </button>
+              {ownerTierLabel === 'The Reselling Engine' && ownerStatus === 'success' && (
+                <Link
+                  to="/ResellingEngine"
+                  className="py-3 px-6 bg-white text-on-primary font-headline font-bold uppercase text-[11px] tracking-[0.2em] hover:bg-white/90 transition-all"
+                >
+                  Enter Engine
+                </Link>
+              )}
+            </div>
+
+            {ownerStatus === 'loading' && <p className="text-on-surface-variant text-sm">Loading…</p>}
+            {ownerStatus === 'error' && <p className="text-red-300 text-sm">{ownerError}</p>}
+            {ownerStatus === 'success' && (
+              ownerFiles.length === 0 ? (
+                <p className="text-on-surface-variant text-sm">No files in that bucket yet.</p>
+              ) : (
+                Object.entries(ownerGroups).map(([folder, groupFiles]) => (
+                  <div key={folder || 'root'} className="mb-4">
+                    {folder && (
+                      <div className="text-white text-xs font-bold uppercase tracking-widest mb-2">{folder}</div>
+                    )}
+                    <div className="space-y-2">
+                      {groupFiles.map((file) => (
+                        <a
+                          key={file.path}
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between gap-3 border border-outline-variant/30 bg-surface-container-high px-4 py-3 text-sm text-on-surface-variant hover:border-white/40 hover:text-white transition-all"
+                        >
+                          <span>{file.name}</span>
+                          <span className="material-symbols-outlined text-base">download</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )
+            )}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 mb-8">
           <input
@@ -98,6 +201,15 @@ export default function Access() {
             <div className="font-label text-[10px] tracking-[0.4em] text-on-surface-variant mb-6 uppercase">
               {tier}
             </div>
+
+            {tier === 'The Reselling Engine' && (
+              <Link
+                to="/ResellingEngine"
+                className="inline-block mb-8 py-4 px-8 bg-white text-on-primary font-headline font-bold uppercase text-[11px] tracking-[0.3em] hover:bg-white/90 transition-all active:scale-95"
+              >
+                Enter Engine
+              </Link>
+            )}
 
             {files.length === 0 ? (
               <p className="text-on-surface-variant text-sm">
