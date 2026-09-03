@@ -11,6 +11,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { isOwner } = await resolveOwner(req);
-  return res.status(200).json({ isOwner });
+  const { isOwner, reason } = await resolveOwner(req);
+  return res.status(200).json({ isOwner, reason });
 }

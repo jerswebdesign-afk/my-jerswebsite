@@ -7,7 +7,12 @@ import { useOwnerAccess } from '../useOwnerAccess.js'
 // This is a real Supabase Auth account, used only so the site owner/dev can
 // verify and test the paid-member gates without a purchase.
 export default function OwnerLogin() {
-  const { loading, isOwner, checkFailed, email: sessionEmail } = useOwnerAccess()
+  const { loading, isOwner, checkFailed, reason, email: sessionEmail } = useOwnerAccess()
+  // A genuine "not an admin" result only happens when the RPC actually ran
+  // (reason === 'ok') and returned false. Any other reason means the check
+  // itself didn't complete - showing that distinction is the whole point of
+  // this page, since the two used to be visually identical.
+  const genuinelyNotAdmin = !isOwner && !checkFailed && reason === 'ok'
   const [mode, setMode] = useState('signin') // signin | signup
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -64,12 +69,12 @@ export default function OwnerLogin() {
             <div className="text-white font-bold uppercase tracking-widest text-xs mb-2">
               Signed in as {sessionEmail}
             </div>
-            <p className={"mb-4 " + (isOwner ? "text-green-400" : checkFailed ? "text-yellow-400" : "text-on-surface-variant")}>
+            <p className={"mb-4 " + (isOwner ? "text-green-400" : genuinelyNotAdmin ? "text-on-surface-variant" : "text-yellow-400")}>
               {isOwner
                 ? '✅ Recognized as Owner / Dev — tier gates will bypass for this account.'
-                : checkFailed
-                  ? "⚠️ Could not reach the owner check (api/check-owner.js). Locally, this needs `vercel dev` — plain `vite` can't run it. In production, this means the function itself is failing: check Vercel's function logs and confirm SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and VITE_SUPABASE_ANON_KEY are set for Production. This is NOT the same as \"not an admin.\""
-                  : "❌ Signed in, but this email is not in public.admins — no bypass granted."}
+                : genuinelyNotAdmin
+                  ? "❌ Signed in, but this email is not in public.admins — no bypass granted."
+                  : `⚠️ The owner check did not complete, so this is NOT a real "not an admin" result. Reason: ${reason ?? 'unknown'}.`}
             </p>
             <div className="flex gap-4 flex-wrap items-center">
               <Link to="/access" className="underline hover:text-white text-on-surface-variant text-sm">Test /access</Link>

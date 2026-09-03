@@ -13,14 +13,14 @@ import { supabase } from './supabaseClient.js';
 // api/check-owner.js unreachable, etc.) look identical to a plain boolean,
 // which made a past misconfiguration hard to diagnose from the UI alone.
 export function useOwnerAccess() {
-  const [state, setState] = useState({ loading: true, isOwner: false, checkFailed: false, email: null });
+  const [state, setState] = useState({ loading: true, isOwner: false, checkFailed: false, reason: null, email: null });
 
   useEffect(() => {
     let active = true;
 
     async function check(session) {
       if (!session) {
-        if (active) setState({ loading: false, isOwner: false, checkFailed: false, email: null });
+        if (active) setState({ loading: false, isOwner: false, checkFailed: false, reason: null, email: null });
         return;
       }
       try {
@@ -29,13 +29,13 @@ export function useOwnerAccess() {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
         if (!res.ok) {
-          if (active) setState({ loading: false, isOwner: false, checkFailed: true, email: session.user.email });
+          if (active) setState({ loading: false, isOwner: false, checkFailed: true, reason: `http-${res.status}`, email: session.user.email });
           return;
         }
         const data = await res.json();
-        if (active) setState({ loading: false, isOwner: !!data.isOwner, checkFailed: false, email: session.user.email });
+        if (active) setState({ loading: false, isOwner: !!data.isOwner, checkFailed: false, reason: data.reason ?? null, email: session.user.email });
       } catch (err) {
-        if (active) setState({ loading: false, isOwner: false, checkFailed: true, email: session.user.email });
+        if (active) setState({ loading: false, isOwner: false, checkFailed: true, reason: 'fetch-failed', email: session.user.email });
       }
     }
 
@@ -46,7 +46,7 @@ export function useOwnerAccess() {
         // makes this reject instead of resolve - fail closed to "not an
         // owner" rather than leaving loading true forever, since
         // ResellingEngine.jsx blocks its render on that flag.
-        if (active) setState({ loading: false, isOwner: false, checkFailed: true, email: null });
+        if (active) setState({ loading: false, isOwner: false, checkFailed: true, reason: 'session-check-failed', email: null });
       });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {

@@ -17,7 +17,7 @@ export function getBearerToken(req) {
 // so this fails closed for both unauthenticated and forged requests.
 export async function resolveOwner(req) {
   const token = getBearerToken(req);
-  if (!token) return { isOwner: false };
+  if (!token) return { isOwner: false, reason: 'no-session' };
 
   try {
     const asCaller = createClient(process.env.SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY, {
@@ -28,16 +28,21 @@ export async function resolveOwner(req) {
     const { data, error } = await asCaller.rpc('is_owner');
     if (error) {
       console.error('Owner check failed:', error.message);
-      return { isOwner: false };
+      // error.message here is a Supabase/Postgres error string (e.g. "Invalid
+      // API key", "permission denied for function is_owner") - never the key
+      // itself - safe to relay so a misconfigured env var is diagnosable
+      // without server log access, instead of looking identical to a real
+      // "not an admin" result.
+      return { isOwner: false, reason: `rpc-error: ${error.message}` };
     }
 
-    return { isOwner: data === true };
+    return { isOwner: data === true, reason: 'ok' };
   } catch (err) {
     // A missing/misconfigured SUPABASE_URL or VITE_SUPABASE_ANON_KEY makes
     // createClient() throw synchronously - catch it here so that fails
     // closed to "not an owner" instead of crashing the whole function
     // invocation (FUNCTION_INVOCATION_FAILED / 500) for every caller.
     console.error('Owner check crashed:', err.message);
-    return { isOwner: false };
+    return { isOwner: false, reason: `crashed: ${err.message}` };
   }
 }
