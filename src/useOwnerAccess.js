@@ -39,7 +39,15 @@ export function useOwnerAccess() {
       }
     }
 
-    supabase.auth.getSession().then(({ data }) => check(data.session));
+    supabase.auth.getSession()
+      .then(({ data }) => check(data.session))
+      .catch(() => {
+        // A missing/placeholder Supabase config (see supabaseClient.js)
+        // makes this reject instead of resolve - fail closed to "not an
+        // owner" rather than leaving loading true forever, since
+        // ResellingEngine.jsx blocks its render on that flag.
+        if (active) setState({ loading: false, isOwner: false, checkFailed: true, email: null });
+      });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setState((s) => ({ ...s, loading: true }));
