@@ -114,22 +114,31 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const ip = getClientIp(req);
-  const rateLimit = await checkRateLimit(ip);
-  if (rateLimit.limited) {
-    res.setHeader('Retry-After', String(rateLimit.retryAfterSeconds));
-    return res.status(429).json({ error: 'Too many requests. Try again in a few minutes.' });
+  try {
+    const ip = getClientIp(req);
+    const rateLimit = await checkRateLimit(ip);
+    if (rateLimit.limited) {
+      res.setHeader('Retry-After', String(rateLimit.retryAfterSeconds));
+      return res.status(429).json({ error: 'Too many requests. Try again in a few minutes.' });
+    }
+
+    const email = normalizeEmail(req.body?.email);
+    if (!email) {
+      return res.status(400).json({ error: 'Enter a valid email address.' });
+    }
+
+    // Floor the response time so a valid email (purchases lookup + Storage
+    // list + sign) can't be distinguished from an invalid one (single query)
+    // purely by how long the request takes.
+    const [result] = await Promise.all([resolveAccess(email), sleep(MIN_RESPONSE_MS)]);
+
+    return res.status(result.status).json(result.body);
+  } catch (err) {
+    // Last-resort net: e.g. checkRateLimit()'s delete() isn't individually
+    // guarded, so a Supabase connection problem there would otherwise crash
+    // the whole invocation (FUNCTION_INVOCATION_FAILED) instead of returning
+    // a normal response.
+    console.error('get-downloads crashed:', err.message);
+    return res.status(500).json({ error: 'Something went wrong. Try again shortly.' });
   }
-
-  const email = normalizeEmail(req.body?.email);
-  if (!email) {
-    return res.status(400).json({ error: 'Enter a valid email address.' });
-  }
-
-  // Floor the response time so a valid email (purchases lookup + Storage
-  // list + sign) can't be distinguished from an invalid one (single query)
-  // purely by how long the request takes.
-  const [result] = await Promise.all([resolveAccess(email), sleep(MIN_RESPONSE_MS)]);
-
-  return res.status(result.status).json(result.body);
 }

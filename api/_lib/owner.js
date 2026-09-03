@@ -19,16 +19,25 @@ export async function resolveOwner(req) {
   const token = getBearerToken(req);
   if (!token) return { isOwner: false };
 
-  const asCaller = createClient(process.env.SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  try {
+    const asCaller = createClient(process.env.SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
 
-  const { data, error } = await asCaller.rpc('is_owner');
-  if (error) {
-    console.error('Owner check failed:', error.message);
+    const { data, error } = await asCaller.rpc('is_owner');
+    if (error) {
+      console.error('Owner check failed:', error.message);
+      return { isOwner: false };
+    }
+
+    return { isOwner: data === true };
+  } catch (err) {
+    // A missing/misconfigured SUPABASE_URL or VITE_SUPABASE_ANON_KEY makes
+    // createClient() throw synchronously - catch it here so that fails
+    // closed to "not an owner" instead of crashing the whole function
+    // invocation (FUNCTION_INVOCATION_FAILED / 500) for every caller.
+    console.error('Owner check crashed:', err.message);
     return { isOwner: false };
   }
-
-  return { isOwner: data === true };
 }

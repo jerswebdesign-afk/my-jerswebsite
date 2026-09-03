@@ -3,9 +3,26 @@ import { createClient } from '@supabase/supabase-js';
 // Shared service-role Supabase client for server-side /api functions that
 // need to read Postgres or Storage directly. Never import this into
 // frontend code and never send this key to the browser.
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  // createClient() throws synchronously if the URL is missing. This module
+  // is imported at the top of every /api file that touches Postgres or
+  // Storage, so an uncaught throw here crashes EVERY one of those requests
+  // with a raw FUNCTION_INVOCATION_FAILED 500, not just the one that
+  // happened to need it. Log clearly and fall back to a placeholder client
+  // instead, so a missing env var turns into a normal caught error on the
+  // specific request (handlers below already catch and report these).
+  console.error(
+    '[api/_lib/vault] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are missing. ' +
+    'Set them in Vercel -> Project Settings -> Environment Variables (Production) and redeploy.'
+  );
+}
+
 export const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  supabaseUrl || 'https://placeholder.invalid',
+  supabaseServiceRoleKey || 'placeholder-service-role-key'
 );
 
 const LIST_PAGE_SIZE = 1000;

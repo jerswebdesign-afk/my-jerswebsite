@@ -68,7 +68,7 @@ export default function OwnerLogin() {
               {isOwner
                 ? '✅ Recognized as Owner / Dev — tier gates will bypass for this account.'
                 : checkFailed
-                  ? "⚠️ Could not reach the owner check (api/check-owner.js) — this needs `vercel dev`, not plain `vite`, to run locally. This is NOT the same as \"not an admin.\""
+                  ? "⚠️ Could not reach the owner check (api/check-owner.js). Locally, this needs `vercel dev` — plain `vite` can't run it. In production, this means the function itself is failing: check Vercel's function logs and confirm SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and VITE_SUPABASE_ANON_KEY are set for Production. This is NOT the same as \"not an admin.\""
                   : "❌ Signed in, but this email is not in public.admins — no bypass granted."}
             </p>
             <div className="flex gap-4 flex-wrap items-center">

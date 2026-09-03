@@ -11,9 +11,23 @@ export const config = {
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  // createClient() throws synchronously if the URL is missing, which would
+  // crash every webhook delivery with a raw 500 instead of the clean error
+  // response below. Stripe retries failed webhooks regardless, but this
+  // keeps the failure diagnosable from logs instead of a platform crash page.
+  console.error(
+    '[stripe-webhook] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are missing. ' +
+    'Set them in Vercel -> Project Settings -> Environment Variables (Production) and redeploy.'
+  );
+}
+
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  supabaseUrl || 'https://placeholder.invalid',
+  supabaseServiceRoleKey || 'placeholder-service-role-key'
 );
 
 // Stable Stripe Price IDs for each tier, taken from the existing Payment
@@ -97,15 +111,20 @@ export default async function handler(req, res) {
   }
 
   // 5. Insert the purchase, 6. skipping silently if this event was already processed.
-  const { error } = await supabase
-    .from('purchases')
-    .upsert(
-      { email, product, stripe_event_id: event.id },
-      { onConflict: 'stripe_event_id', ignoreDuplicates: true }
-    );
+  try {
+    const { error } = await supabase
+      .from('purchases')
+      .upsert(
+        { email, product, stripe_event_id: event.id },
+        { onConflict: 'stripe_event_id', ignoreDuplicates: true }
+      );
 
-  if (error) {
-    console.error('Failed to insert purchase:', error);
+    if (error) {
+      console.error('Failed to insert purchase:', error);
+      return res.status(500).json({ error: 'Failed to record purchase' });
+    }
+  } catch (err) {
+    console.error('Failed to insert purchase (crashed):', err.message);
     return res.status(500).json({ error: 'Failed to record purchase' });
   }
 
