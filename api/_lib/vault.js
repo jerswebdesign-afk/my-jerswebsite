@@ -3,7 +3,15 @@ import { createClient } from '@supabase/supabase-js';
 // Shared service-role Supabase client for server-side /api functions that
 // need to read Postgres or Storage directly. Never import this into
 // frontend code and never send this key to the browser.
-const supabaseUrl = process.env.SUPABASE_URL;
+//
+// URL falls back to VITE_SUPABASE_URL: it's the same project URL either way
+// (not a secret), and Vercel exposes every configured env var to serverless
+// functions regardless of the VITE_ prefix - that prefix only controls what
+// Vite inlines into the browser bundle. Two independently-set variables that
+// must always hold the identical value is a needless way for this to break;
+// this fallback removes that failure mode entirely. There is no equivalent
+// fallback for the service-role key - it must never exist under a VITE_ name.
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceRoleKey) {

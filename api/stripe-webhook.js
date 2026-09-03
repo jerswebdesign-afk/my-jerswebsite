@@ -11,7 +11,8 @@ export const config = {
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const supabaseUrl = process.env.SUPABASE_URL;
+// Same URL fallback as api/_lib/vault.js - see the comment there.
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceRoleKey) {

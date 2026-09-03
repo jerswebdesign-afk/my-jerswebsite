@@ -20,7 +20,8 @@ export async function resolveOwner(req) {
   if (!token) return { isOwner: false, reason: 'no-session' };
 
   try {
-    const asCaller = createClient(process.env.SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY, {
+    // Same URL fallback as api/_lib/vault.js - see the comment there.
+    const asCaller = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
